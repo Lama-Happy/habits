@@ -9,47 +9,60 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
-  <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-md">
-    <h1 class="text-2xl font-bold text-center mb-6">🔥 Tracker d'habitudes</h1>
+  <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+    <h1 class="text-3xl font-extrabold text-center mb-8 text-gray-900">🔥 Tracker d'habitudes</h1>
 
-    <div id="name-section" class="mb-6">
-      <input id="username" type="text" placeholder="Entre ton nom" class="w-full p-2 border rounded mb-2" />
-      <button onclick="saveName()" class="bg-blue-500 text-white w-full py-2 rounded">Entrer</button>
+    <div id="name-section" class="mb-8">
+      <input
+        id="username"
+        type="text"
+        placeholder="Entre ton nom"
+        class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <button
+        onclick="saveName()"
+        class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-3 rounded-lg font-semibold"
+      >
+        Entrer
+      </button>
     </div>
 
-    <div id="greeting" class="text-center text-xl font-semibold hidden mb-4"></div>
+    <div id="greeting" class="text-center text-2xl font-semibold text-gray-800 hidden mb-6"></div>
 
-    <form id="habit-form" class="mb-4 hidden">
+    <form id="habit-form" class="mb-6 hidden" autocomplete="off">
       <input
         type="text"
         id="habit-name"
         placeholder="Nouvelle habitude"
         required
-        class="w-full p-2 border rounded"
+        class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
-      <button class="bg-indigo-500 text-white w-full py-2 mt-2 rounded">Ajouter</button>
+      <button
+        type="submit"
+        class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white py-3 rounded-lg font-semibold"
+      >
+        Ajouter
+      </button>
     </form>
 
-    <div id="habits"></div>
+    <div id="habits" class="space-y-4"></div>
   </div>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyC_09_YMMsR1_SHtoylxnQuB2bYOfWLuGc",
-      authDomain: "base-habits.firebaseapp.com",
-      projectId: "base-habits",
-      storageBucket: "base-habits.firebasestorage.app",
-      messagingSenderId: "69106766254",
-      appId: "1:69106766254:web:b6e3903cb31a0aa47a383f",
-      measurementId: "G-LRMQ3SS22K"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID",
     };
-
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     let currentUser = localStorage.getItem("username") || "";
-    let unsubscribe = null; // pour détacher l'écoute en temps réel
+    let unsubscribe = null;
 
     async function saveName() {
       const input = document.getElementById("username");
@@ -68,20 +81,20 @@
       e.preventDefault();
       const name = document.getElementById("habit-name").value.trim();
       if (!name || !currentUser) return;
-      await db.collection("habits").add({
+      const docRef = await db.collection("habits").add({
         owner: currentUser,
         name,
         series: 0,
         freezes: 3,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
+      console.log("Nouvel ID:", docRef.id);
       document.getElementById("habit-name").value = "";
-      // Pas besoin d'appeler loadHabits(), l'écoute en temps réel gère ça.
     });
 
     function startListeningHabits() {
       const container = document.getElementById("habits");
-      if (unsubscribe) unsubscribe(); // détache l'écoute précédente si existante
+      if (unsubscribe) unsubscribe();
 
       unsubscribe = db
         .collection("habits")
@@ -92,15 +105,17 @@
           snapshot.forEach((doc) => {
             const habit = doc.data();
             const el = document.createElement("div");
-            el.className = "bg-gray-50 p-4 rounded mb-2 shadow";
+            el.className =
+              "bg-white p-5 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow";
             el.innerHTML = `
-              <h3 class="font-semibold text-lg">${habit.name}</h3>
-              <p>Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
-              <p>Gels disponibles : ${habit.freezes}</p>
-              <div class="mt-2 space-x-2">
-                <button onclick="markDone('${doc.id}', ${habit.series})" class="bg-green-500 text-white px-2 py-1 rounded">✅ Fait</button>
-                <button onclick="useFreeze('${doc.id}', ${habit.freezes})" class="bg-blue-500 text-white px-2 py-1 rounded">🧊 Gel</button>
-                <button onclick="deleteHabit('${doc.id}')" class="bg-red-500 text-white px-2 py-1 rounded">❌</button>
+              <h3 class="font-bold text-xl mb-2 text-gray-900">${habit.name}</h3>
+              <p class="text-gray-700 mb-1">Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
+              <p class="text-gray-700 mb-3">Gels disponibles : <span class="font-semibold">${habit.freezes}</span></p>
+              <p class="text-xs text-gray-400 mb-3 select-all">ID: ${doc.id}</p>
+              <div class="space-x-3">
+                <button onclick="markDone('${doc.id}', ${habit.series})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold">✅ Fait</button>
+                <button onclick="useFreeze('${doc.id}', ${habit.freezes})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold">🧊 Gel</button>
+                <button onclick="deleteHabit('${doc.id}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold">❌ Supprimer</button>
               </div>
             `;
             container.appendChild(el);
@@ -112,7 +127,6 @@
       await db.collection("habits").doc(id).update({
         series: currentSeries + 1,
       });
-      // Plus besoin d'appeler loadHabits() avec onSnapshot
     }
 
     async function useFreeze(id, currentFreezes) {
@@ -131,7 +145,6 @@
       }
     }
 
-    // Chargement si nom déjà en mémoire
     if (currentUser) {
       document.getElementById("greeting").textContent = `Bienvenue, ${currentUser} !`;
       document.getElementById("greeting").classList.remove("hidden");
