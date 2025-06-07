@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🔥 Tracker d'habitudes</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -13,102 +13,148 @@
     <h1 class="text-2xl font-bold text-center mb-6">🔥 Tracker d'habitudes</h1>
 
     <div id="name-section" class="mb-6">
-      <input id="username" type="text" placeholder="Entre ton nom" class="w-full p-2 border rounded mb-2">
-      <button onclick="saveName()" class="bg-blue-500 text-white w-full py-2 rounded">Entrer</button>
+      <input
+        id="username"
+        type="text"
+        placeholder="Entre ton nom"
+        class="w-full p-2 border rounded mb-2"
+      />
+      <button onclick="saveName()" class="bg-blue-500 text-white w-full py-2 rounded">
+        Entrer
+      </button>
     </div>
 
     <div id="greeting" class="text-center text-xl font-semibold hidden mb-4"></div>
 
     <form id="habit-form" class="mb-4 hidden">
-      <input type="text" id="habit-name" placeholder="Nouvelle habitude" required class="w-full p-2 border rounded">
-      <button class="bg-indigo-500 text-white w-full py-2 mt-2 rounded">Ajouter</button>
+      <input
+        type="text"
+        id="habit-name"
+        placeholder="Nouvelle habitude"
+        required
+        class="w-full p-2 border rounded"
+      />
+      <button class="bg-indigo-500 text-white w-full py-2 mt-2 rounded" type="submit">
+        Ajouter
+      </button>
     </form>
 
     <div id="habits"></div>
   </div>
 
   <script>
+    // Config Firebase – remplace avec tes infos
     const firebaseConfig = {
-      apiKey: "AIzaSyC_09_YMMsR1_SHtoylxnQuB2bYOfWLuGc",
-      authDomain: "base-habits.firebaseapp.com",
-      projectId: "base-habits",
-      storageBucket: "base-habits.firebasestorage.app",
-      messagingSenderId: "69106766254",
-      appId: "1:69106766254:web:b6e3903cb31a0aa47a383f"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let currentUser = localStorage.getItem('username') || '';
+    let currentUser = localStorage.getItem("username") || "";
+
+    function displayHabit(habitId, habit) {
+      const container = document.getElementById("habits");
+      // Si élément existe déjà, on le met à jour
+      let el = document.getElementById(`habit-${habitId}`);
+      if (!el) {
+        el = document.createElement("div");
+        el.id = `habit-${habitId}`;
+        el.className = "bg-gray-50 p-4 rounded mb-2 shadow";
+        container.appendChild(el);
+      }
+      el.innerHTML = `
+        <h3 class="font-semibold text-lg">${habit.name}</h3>
+        <p>Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
+        <p>Gels disponibles : ${habit.freezes}</p>
+        <div class="mt-2 space-x-2">
+          <button onclick="markDone('${habitId}', ${habit.series})" class="bg-green-500 text-white px-2 py-1 rounded">✅ Fait</button>
+          <button onclick="useFreeze('${habitId}', ${habit.freezes})" class="bg-blue-500 text-white px-2 py-1 rounded">🧊 Gel</button>
+          <button onclick="deleteHabit('${habitId}')" class="bg-red-500 text-white px-2 py-1 rounded">❌</button>
+        </div>
+      `;
+    }
 
     async function saveName() {
-      const input = document.getElementById('username');
+      const input = document.getElementById("username");
       const name = input.value.trim();
       if (!name) return;
       currentUser = name;
-      localStorage.setItem('username', name);
-      document.getElementById('greeting').textContent = `Bienvenue, ${name} !`;
-      document.getElementById('greeting').classList.remove('hidden');
-      document.getElementById('name-section').classList.add('hidden');
-      document.getElementById('habit-form').classList.remove('hidden');
-      loadHabits();
+      localStorage.setItem("username", name);
+      document.getElementById("greeting").textContent = `Bienvenue, ${name} !`;
+      document.getElementById("greeting").classList.remove("hidden");
+      document.getElementById("name-section").classList.add("hidden");
+      document.getElementById("habit-form").classList.remove("hidden");
+
+      // Démarrer l'écoute temps réel des habitudes
+      subscribeHabits();
     }
 
-    document.getElementById('habit-form').addEventListener('submit', async (e) => {
+    document.getElementById("habit-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById('habit-name').value.trim();
+      const name = document.getElementById("habit-name").value.trim();
       if (!name || !currentUser) return;
-      await db.collection('habits').add({
-        owner: currentUser,
-        name,
-        series: 0,
-        freezes: 3,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      document.getElementById('habit-name').value = '';
-      loadHabits();
+
+      // ID temporaire local (timestamp + random)
+      const tempId = "temp-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
+      // Affichage immédiat
+      displayHabit(tempId, { name, series: 0, freezes: 3 });
+
+      // Clear input
+      document.getElementById("habit-name").value = "";
+
+      try {
+        // Envoi à Firebase
+        await db.collection("habits").add({
+          owner: currentUser,
+          name,
+          series: 0,
+          freezes: 3,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // Pas besoin de reload ici, l'écoute temps réel va mettre à jour la liste
+      } catch (err) {
+        alert("Erreur lors de l'ajout de l'habitude.");
+        console.error(err);
+        // Supprimer l'élément temporaire affiché en cas d'erreur
+        const tempEl = document.getElementById(`habit-${tempId}`);
+        if (tempEl) tempEl.remove();
+      }
     });
 
-    async function loadHabits() {
-      const container = document.getElementById('habits');
-      container.innerHTML = '';
-      const snapshot = await db.collection('habits')
-        .where('owner', '==', currentUser)
-        .orderBy('createdAt')
-        .get();
+    function subscribeHabits() {
+      const container = document.getElementById("habits");
+      container.innerHTML = ""; // vide la liste au départ
 
-      snapshot.forEach(doc => {
-        const habit = doc.data();
-        const el = document.createElement('div');
-        el.className = 'bg-gray-50 p-4 rounded mb-2 shadow';
-        el.innerHTML = `
-          <h3 class="font-semibold text-lg">${habit.name}</h3>
-          <p>Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
-          <p>Gels disponibles : ${habit.freezes}</p>
-          <div class="mt-2 space-x-2">
-            <button onclick="markDone('${doc.id}', ${habit.series})" class="bg-green-500 text-white px-2 py-1 rounded">✅ Fait</button>
-            <button onclick="useFreeze('${doc.id}', ${habit.freezes})" class="bg-blue-500 text-white px-2 py-1 rounded">🧊 Gel</button>
-            <button onclick="deleteHabit('${doc.id}')" class="bg-red-500 text-white px-2 py-1 rounded">❌</button>
-          </div>
-        `;
-        container.appendChild(el);
-      });
+      db.collection("habits")
+        .where("owner", "==", currentUser)
+        .orderBy("createdAt")
+        .onSnapshot((snapshot) => {
+          container.innerHTML = "";
+          snapshot.forEach((doc) => {
+            displayHabit(doc.id, doc.data());
+          });
+        });
     }
 
     async function markDone(id, currentSeries) {
-      await db.collection('habits').doc(id).update({
+      await db.collection("habits").doc(id).update({
         series: currentSeries + 1
       });
-      loadHabits();
+      // L'écoute temps réel rafraîchira la liste automatiquement
     }
 
     async function useFreeze(id, currentFreezes) {
       if (currentFreezes > 0) {
-        await db.collection('habits').doc(id).update({
+        await db.collection("habits").doc(id).update({
           freezes: currentFreezes - 1
         });
-        loadHabits();
       } else {
         alert("Plus de gels disponibles !");
       }
@@ -116,18 +162,17 @@
 
     async function deleteHabit(id) {
       if (confirm("Supprimer cette habitude ?")) {
-        await db.collection('habits').doc(id).delete();
-        loadHabits();
+        await db.collection("habits").doc(id).delete();
       }
     }
 
     // Chargement si nom déjà en mémoire
     if (currentUser) {
-      document.getElementById('greeting').textContent = `Bienvenue, ${currentUser} !`;
-      document.getElementById('greeting').classList.remove('hidden');
-      document.getElementById('name-section').classList.add('hidden');
-      document.getElementById('habit-form').classList.remove('hidden');
-      loadHabits();
+      document.getElementById("greeting").textContent = `Bienvenue, ${currentUser} !`;
+      document.getElementById("greeting").classList.remove("hidden");
+      document.getElementById("name-section").classList.add("hidden");
+      document.getElementById("habit-form").classList.remove("hidden");
+      subscribeHabits();
     }
   </script>
 </body>
