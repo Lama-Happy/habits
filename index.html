@@ -47,91 +47,111 @@
       e.preventDefault();
       const name = document.getElementById('habit-name').value.trim();
       if (!name || !currentUser) return;
-      const response = await fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'add',
-          owner: currentUser,
-          name: name
-        })
-      });
-      document.getElementById('habit-name').value = '';
-      loadHabits();
+      try {
+        const response = await fetch(scriptURL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'add',
+            owner: currentUser,
+            name: name
+          })
+        });
+        document.getElementById('habit-name').value = '';
+        loadHabits();
+      } catch (error) {
+        console.error("Erreur lors de l'ajout :", error);
+      }
     });
 
     async function loadHabits() {
       const container = document.getElementById('habits');
       container.innerHTML = '';
-      const res = await fetch(scriptURL + `?action=list&owner=${encodeURIComponent(currentUser)}`);
-      const data = await res.json();
+      try {
+        const res = await fetch(scriptURL + `?action=list&owner=${encodeURIComponent(currentUser)}`);
+        const data = await res.json();
 
-      data.forEach(habit => {
-        const el = document.createElement('div');
-        el.className = 'bg-gray-50 p-4 rounded mb-2 shadow';
-        el.innerHTML = `
-          <h3 class="font-semibold text-lg">${habit.name}</h3>
-          <p>Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
-          <p>Gels disponibles : ${habit.freezes}</p>
-          <div class="mt-2 space-x-2">
-            <button onclick="markDone('${habit.id}', ${habit.series})" class="bg-green-500 text-white px-2 py-1 rounded">✅ Fait</button>
-            <button onclick="useFreeze('${habit.id}', ${habit.freezes})" class="bg-blue-500 text-white px-2 py-1 rounded">🧊 Gel</button>
-            <button onclick="deleteHabit('${habit.id}')" class="bg-red-500 text-white px-2 py-1 rounded">❌</button>
-          </div>
-        `;
-        container.appendChild(el);
-      });
+        data.forEach(habit => {
+          const el = document.createElement('div');
+          el.className = 'bg-gray-50 p-4 rounded mb-2 shadow';
+          el.innerHTML = `
+            <h3 class="font-semibold text-lg">${habit.name}</h3>
+            <p>Série : <span class="text-orange-500 font-bold">${habit.series}</span> 🔥</p>
+            <p>Gels disponibles : ${habit.freezes}</p>
+            <div class="mt-2 space-x-2">
+              <button onclick="markDone('${habit.id}', ${habit.series})" class="bg-green-500 text-white px-2 py-1 rounded">✅ Fait</button>
+              <button onclick="useFreeze('${habit.id}', ${habit.freezes})" class="bg-blue-500 text-white px-2 py-1 rounded">🧊 Gel</button>
+              <button onclick="deleteHabit('${habit.id}')" class="bg-red-500 text-white px-2 py-1 rounded">❌</button>
+            </div>
+          `;
+          container.appendChild(el);
+        });
+      } catch (error) {
+        console.error("Erreur lors du chargement :", error);
+      }
     }
 
     async function markDone(id, currentSeries) {
-      await fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'done',
-          id,
-          series: currentSeries + 1
-        })
-      });
-      loadHabits();
+      try {
+        await fetch(scriptURL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'done',
+            id,
+            series: currentSeries + 1
+          })
+        });
+        loadHabits();
+      } catch (error) {
+        console.error("Erreur lors du marquage :", error);
+      }
     }
 
     async function useFreeze(id, currentFreezes) {
       if (currentFreezes <= 0) return alert("Plus de gels disponibles !");
-      await fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'freeze',
-          id,
-          freezes: currentFreezes - 1
-        })
-      });
-      loadHabits();
+      try {
+        await fetch(scriptURL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'freeze',
+            id,
+            freezes: currentFreezes - 1
+          })
+        });
+        loadHabits();
+      } catch (error) {
+        console.error("Erreur lors de l'utilisation d'un gel :", error);
+      }
     }
 
     async function deleteHabit(id) {
-      await fetch(scriptURL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'delete',
-          id
-        })
-      });
-      loadHabits();
+      try {
+        await fetch(scriptURL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'delete',
+            id
+          })
+        });
+        loadHabits();
+      } catch (error) {
+        console.error("Erreur lors de la suppression :", error);
+      }
     }
 
     if (currentUser) {
