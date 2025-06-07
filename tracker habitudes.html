@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tracker d'habitudes</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .habit {
+      background: white;
+      padding: 15px;
+      margin: 10px auto;
+      border-radius: 10px;
+      box-shadow: 0 0 5px #ccc;
+      max-width: 500px;
+    }
+    .series {
+      color: orange;
+      font-weight: bold;
+    }
+    .flame {
+      display: inline-block;
+      color: red;
+      font-size: 20px;
+    }
+    .controls {
+      margin-top: 10px;
+    }
+    .autodays {
+      margin-top: 5px;
+    }
+    label {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 Tracker d'habitudes</h1>
+
+  <form id="habit-form">
+    <input type="text" id="habit-name" placeholder="Nouvelle habitude" required>
+    <button type="submit">Ajouter</button>
+  </form>
+
+  <div id="habits"></div>
+
+  <script>
+    const habits = JSON.parse(localStorage.getItem('habits') || '[]');
+
+    function saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(habits));
+    }
+
+    function renderHabits() {
+      const container = document.getElementById('habits');
+      container.innerHTML = '';
+      const daysOfWeek = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+      const today = new Date().getDay();
+
+      habits.forEach((habit, index) => {
+        const habitEl = document.createElement('div');
+        habitEl.className = 'habit';
+
+        const daysSince = Math.floor((Date.now() - new Date(habit.lastDone)) / (1000 * 60 * 60 * 24));
+        const todayName = daysOfWeek[today];
+        if (habit.autoAdvanceDays?.includes(todayName)) {
+          if (daysSince >= 1) {
+            habit.series++;
+            habit.lastDone = new Date();
+          }
+        } else if (daysSince > habit.freezeDays) {
+          habit.series = 0;
+        }
+
+        const autoAdvanceHTML = daysOfWeek.map(day => `
+          <label>
+            <input type="checkbox" onchange="toggleAutoDay(${index}, '${day}')" ${habit.autoAdvanceDays?.includes(day) ? 'checked' : ''}>
+            ${day}
+          </label>
+        `).join('');
+
+        habitEl.innerHTML = `
+          <h3 contenteditable="true" onblur="renameHabit(${index}, this.innerText)">${habit.name}</h3>
+          <div>Série : <span class="series">${habit.series}</span> <span class="flame">${'🔥'.repeat(Math.min(habit.series, 10))}</span></div>
+          <div>Gels disponibles : ${habit.freezes}</div>
+          <div class="controls">
+            <button onclick="markDone(${index})">✅ Fait</button>
+            <button onclick="useFreeze(${index})">🧊 Utiliser un gel</button>
+            <button onclick="deleteHabit(${index})">❌ Supprimer</button>
+          </div>
+          <div class="autodays">
+            <small>Jours d'avancement automatique :</small><br>
+            ${autoAdvanceHTML}
+          </div>
+        `;
+        container.appendChild(habitEl);
+      });
+      saveHabits();
+    }
+
+    function markDone(index) {
+      habits[index].lastDone = new Date();
+      habits[index].series++;
+      renderHabits();
+    }
+
+    function useFreeze(index) {
+      if (habits[index].freezes > 0) {
+        habits[index].freezes--;
+        habits[index].lastDone = new Date();
+        renderHabits();
+      } else {
+        alert("Plus de gels disponibles !");
+      }
+    }
+
+    function deleteHabit(index) {
+      if (confirm("Supprimer cette habitude ?")) {
+        habits.splice(index, 1);
+        renderHabits();
+      }
+    }
+
+    function renameHabit(index, newName) {
+      habits[index].name = newName.trim();
+      saveHabits();
+    }
+
+    function toggleAutoDay(index, day) {
+      const days = habits[index].autoAdvanceDays || [];
+      if (days.includes(day)) {
+        habits[index].autoAdvanceDays = days.filter(d => d !== day);
+      } else {
+        habits[index].autoAdvanceDays = [...days, day];
+      }
+      saveHabits();
+    }
+
+    document.getElementById('habit-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('habit-name').value.trim();
+      if (name) {
+        habits.push({
+          name,
+          series: 0,
+          lastDone: new Date(),
+          freezeDays: 2,
+          freezes: 3,
+          autoAdvanceDays: []
+        });
+        renderHabits();
+        this.reset();
+      }
+    });
+
+    renderHabits();
+  </script>
+</body>
+</html>
